@@ -29,10 +29,10 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
         video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
       streamRef.current = s;
+      // DON'T set videoRef.current.srcObject here — the video element may not
+      // be in the DOM yet (stream state controls conditional rendering).
+      // A separate useEffect syncs it when both exist.
       setStream(s);
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-      }
       const track = s.getVideoTracks()[0];
       const settings = track.getSettings();
       setResolution(`${settings.width}x${settings.height}`);
@@ -40,7 +40,7 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       console.error('Camera access denied:', e);
       setCameraError(e.message || 'Camera access denied');
     }
-  }, [videoRef]);
+  }, []);
 
   const stopCamera = useCallback(() => {
     const s = streamRef.current;
@@ -48,26 +48,58 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       s.getTracks().forEach(t => t.stop());
       streamRef.current = null;
       setStream(null);
+      // Also detach from video element to prevent "aborted" errors
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
-  }, []);
+  }, [videoRef]);
 
-  // Start/stop when paired status changes (stable deps — no infinite loop)
+  // Sync stream to video element whenever stream state or video ref changes.
+  // This handles the critical case: startCamera() resolves before the video
+  // element exists (because stream is null on first render), so we defer the
+  // srcObject assignment until this effect runs after the DOM commit.
+  useEffect(() => {
+    if (stream && videoRef.current && videoRef.current instanceof HTMLVideoElement) {
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+      }
+    }
+  }, [stream, videoRef]);
+
+  // Start/stop when paired status changes
   useEffect(() => {
     if (paired) {
       startCamera();
     } else {
       stopCamera();
     }
-    return () => stopCamera();
-  }, [paired, startCamera, stopCamera]);
+    // Cleanup: stop camera when this component unmounts
+    return () => {
+      const s = streamRef.current;
+      if (s) {
+        s.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paired]);
 
   return (
     <div className="fixed inset-0 z-0 bg-black overflow-hidden flex items-center justify-center">
-      {/* Video or placeholder */}
-      {paired && stream ? (
-        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-3 text-text-muted">
+      {/* Always-rendered video element — ensures videoRef always points to it.
+          Hidden via CSS when not active so ref stays valid from first mount. */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`w-full h-full object-cover ${!paired || !stream ? 'invisible' : ''}`}
+      />
+
+      {/* Placeholder overlay (covers the invisible video element) */}
+      {(!paired || !stream) && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-text-muted bg-black">
           <Camera size={48} className="opacity-30" />
           <p className="text-sm">{cameraError || 'No camera connected'}</p>
         </div>
