@@ -133,10 +133,7 @@ export function useRealtimeDetection(
         };
       });
 
-      setDetections(prev => {
-        const next = [...prev, ...apiDetections];
-        return next.slice(-50);
-      });
+      setDetections(apiDetections);
 
       frameCountRef.current++;
     } catch (err: any) {
