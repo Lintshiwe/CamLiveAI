@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Camera } from 'lucide-react';
 import { Detection } from '../types';
 import { BoundingBox } from './BoundingBox';
+import { getConfidenceColor } from '../utils/helpers';
 
 interface CameraViewportProps {
   detections: Detection[];
@@ -124,6 +125,27 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
           }} />
         </div>
       )}
+
+      {/* Mask polygons (segmentation outlines) */}
+      {showBboxes && paired && detections.some(d => d.mask) && (() => {
+        const vw = videoRef.current?.videoWidth ?? 640;
+        const vh = videoRef.current?.videoHeight ?? 480;
+        return (
+          <svg className="absolute inset-0 z-10 pointer-events-none w-full h-full" viewBox={`0 0 ${vw} ${vh}`} preserveAspectRatio="xMidYMid meet">
+            {detections.map(d => d.mask && d.mask.length > 2 && (
+              <polygon
+                key={`mask-${d.id}`}
+                points={d.mask.map(pt => `${pt[0]},${pt[1]}`).join(' ')}
+                fill={getConfidenceColor(d.confidence)}
+                fillOpacity={0.25}
+                stroke={getConfidenceColor(d.confidence)}
+                strokeWidth={1.5}
+                strokeOpacity={0.5}
+              />
+            ))}
+          </svg>
+        );
+      })()}
 
       {/* Bounding Boxes */}
       {showBboxes && paired && detections.map(d => d.bbox && (

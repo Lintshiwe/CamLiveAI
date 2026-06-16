@@ -1,10 +1,11 @@
 export interface Detection {
   id: string;
-  bbox: number[];        // [x, y, w, h] from API
+  bbox: number[];        // [x, y, w, h] in video pixel space
   class_name: string;
   confidence: number;
   class_id?: number;
   grade?: string;
+  mask?: number[][];     // [[x,y], [x,y], ...] polygon points in video pixel space
 }
 
 export interface PairingConfig {

@@ -118,6 +118,10 @@ export function useRealtimeDetection(
           bw * scaleX,
           bh * scaleY,
         ];
+        // Transform mask polygon points the same way
+        const videoMask = d.mask
+          ? d.mask.map((pt: number[]) => [(pt[0] * scaleX) + cropX, (pt[1] * scaleY) + cropY])
+          : undefined;
         return {
           id: `${Date.now()}-${idx}`,
           bbox: videoBbox,
@@ -125,6 +129,7 @@ export function useRealtimeDetection(
           confidence: typeof d.confidence === 'number' ? Math.round(d.confidence * 100) : 0,
           class_id: d.class_id,
           grade: d.grade,
+          mask: videoMask,
         };
       });
 
