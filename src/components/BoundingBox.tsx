@@ -11,9 +11,11 @@ interface BoundingBoxProps {
 
 export const BoundingBox: React.FC<BoundingBoxProps> = ({ detection, showLabel, videoWidth, videoHeight }) => {
   if (!detection.bbox || detection.bbox.length < 4) return null;
+  // Hide low-confidence guesses (defense-in-depth — backend filters too)
+  if (detection.confidence < 50) return null;
   const [x, y, w, h] = detection.bbox;
 
-  // bbox values are pixel coordinates in the captured image's coordinate space.
+  // bbox values are already in video pixel space (transformed in useRealtimeDetection).
   // Convert to percentage of video container for CSS positioning.
   const vw = videoWidth || 640;
   const vh = videoHeight || 480;

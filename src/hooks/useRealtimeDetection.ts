@@ -78,7 +78,7 @@ export function useRealtimeDetection(
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: base64 }),
+        body: JSON.stringify({ image: base64, confidence: 0.65 }),
         signal: AbortSignal.timeout(30000), // 30s timeout
       });
 
@@ -98,14 +98,35 @@ export function useRealtimeDetection(
       setError(null);
 
       const data = await res.json();
-      const apiDetections: Detection[] = (data.detections || []).map((d: any, idx: number) => ({
-        id: `${Date.now()}-${idx}`,
-        bbox: d.bbox || [0, 0, 0, 0],
-        class_name: d.class_name || d.class || 'Unknown',
-        confidence: typeof d.confidence === 'number' ? Math.round(d.confidence * 100) : 0,
-        class_id: d.class_id,
-        grade: d.grade,
-      }));
+      // The model runs on a 320x240 center-crop of the 640x480 video.
+      // bbox coordinates are in 320x240 space — transform to video space.
+      const videoEl = videoRef.current;
+      const videoW = videoEl?.videoWidth || 640;
+      const videoH = videoEl?.videoHeight || 480;
+      const cropSize = Math.min(videoW, videoH);
+      const cropX = (videoW - cropSize) / 2;
+      const cropY = (videoH - cropSize) / 2;
+      const scaleX = cropSize / 320;
+      const scaleY = cropSize / 240;
+
+      const apiDetections: Detection[] = (data.detections || []).map((d: any, idx: number) => {
+        const [bx, by, bw, bh] = d.bbox || [0, 0, 0, 0];
+        // Transform from model space (320x240 center-crop) to video pixel space
+        const videoBbox = [
+          (bx * scaleX) + cropX,
+          (by * scaleY) + cropY,
+          bw * scaleX,
+          bh * scaleY,
+        ];
+        return {
+          id: `${Date.now()}-${idx}`,
+          bbox: videoBbox,
+          class_name: d.class_name || d.class || 'Unknown',
+          confidence: typeof d.confidence === 'number' ? Math.round(d.confidence * 100) : 0,
+          class_id: d.class_id,
+          grade: d.grade,
+        };
+      });
 
       setDetections(prev => {
         const next = [...prev, ...apiDetections];
