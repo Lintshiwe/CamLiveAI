@@ -11,12 +11,10 @@ export function useRealtimeDetection(
   const [isProcessing, setIsProcessing] = useState(false);
   const [fps, setFps] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const processingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const frameCountRef = useRef(0);
   const lastFpsTimeRef = useRef(performance.now());
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const retryCountRef = useRef(0);
 
   const getIntervalMs = useCallback(() => {
     switch (mode) {
@@ -35,12 +33,22 @@ export function useRealtimeDetection(
       canvasRef.current = document.createElement('canvas');
     }
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    // Downscale detection frames to 320x240 for faster uploads
+    const targetW = 320;
+    const targetH = 240;
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    // Use the full video as source but draw into smaller canvas
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+    // Crop to center square then scale down
+    const size = Math.min(vw, vh);
+    const sx = (vw - size) / 2;
+    const sy = (vh - size) / 2;
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, targetW, targetH);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
     return dataUrl.replace(/^data:image\/jpeg;base64,/, '');
   }, [videoRef]);
 
@@ -53,11 +61,9 @@ export function useRealtimeDetection(
   }, [pairingConfig]);
 
   const sendFrame = useCallback(async () => {
-    if (processingRef.current) return;
     const base64 = captureFrame();
     if (!base64) return;
 
-    processingRef.current = true;
     setIsProcessing(true);
 
     try {
@@ -90,7 +96,6 @@ export function useRealtimeDetection(
 
       // Clear error on success
       setError(null);
-      retryCountRef.current = 0;
 
       const data = await res.json();
       const apiDetections: Detection[] = (data.detections || []).map((d: any, idx: number) => ({
@@ -116,7 +121,6 @@ export function useRealtimeDetection(
       }
       console.error('Realtime detection error:', err);
     } finally {
-      processingRef.current = false;
       setIsProcessing(false);
     }
   }, [captureFrame, pairingConfig, getApiUrl]);
