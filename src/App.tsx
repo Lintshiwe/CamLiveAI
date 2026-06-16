@@ -42,7 +42,7 @@ export default function App() {
   });
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { detections, isProcessing, fps } = useRealtimeDetection(
+  const { detections, isProcessing, fps, error: detectionError } = useRealtimeDetection(
     paired && activeTab === 'camera',
     videoRef,
     pairingConfig,
@@ -121,6 +121,7 @@ export default function App() {
         detectionCount={detections.length}
         userName={userName}
         projectName={projectName}
+        error={detectionError}
       />
 
       {/* Controls Overlay */}

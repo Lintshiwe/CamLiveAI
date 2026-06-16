@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Camera } from 'lucide-react';
 import { Detection } from '../types';
 import { BoundingBox } from './BoundingBox';
@@ -16,10 +16,19 @@ interface CameraViewportProps {
 export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, showBboxes, showLabels, showGrid, videoRef }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [resolution, setResolution] = useState('1920x1080');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = useCallback(async () => {
+    // Don't start if already streaming
+    if (streamRef.current) return;
+
+    setCameraError(null);
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { width: 1920, height: 1080 } });
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      streamRef.current = s;
       setStream(s);
       if (videoRef.current) {
         videoRef.current.srcObject = s;
@@ -27,20 +36,28 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       const track = s.getVideoTracks()[0];
       const settings = track.getSettings();
       setResolution(`${settings.width}x${settings.height}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Camera access denied:', e);
+      setCameraError(e.message || 'Camera access denied');
+    }
+  }, [videoRef]);
+
+  const stopCamera = useCallback(() => {
+    const s = streamRef.current;
+    if (s) {
+      s.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+      setStream(null);
     }
   }, []);
 
-  const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      setStream(null);
-    }
-  }, [stream]);
-
+  // Start/stop when paired status changes (stable deps — no infinite loop)
   useEffect(() => {
-    if (paired) startCamera();
+    if (paired) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
     return () => stopCamera();
   }, [paired, startCamera, stopCamera]);
 
@@ -52,7 +69,7 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 text-text-muted">
           <Camera size={48} className="opacity-30" />
-          <p className="text-sm">No camera connected</p>
+          <p className="text-sm">{cameraError || 'No camera connected'}</p>
         </div>
       )}
 
