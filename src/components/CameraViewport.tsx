@@ -15,30 +15,28 @@ interface CameraViewportProps {
 
 export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, showBboxes, showLabels, showGrid, videoRef }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [resolution, setResolution] = useState('1920x1080');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Track if video was ever started — once started, keep showing it
+  const startedRef = useRef(false);
 
   const startCamera = useCallback(async () => {
-    // Don't start if already streaming
-    if (streamRef.current) return;
-
+    if (streamRef.current) {
+      console.log('[CAM] Already streaming — skipping start');
+      return;
+    }
+    console.log('[CAM] Starting camera...');
     setCameraError(null);
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
+      const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
+      console.log('[CAM] getUserMedia with:', JSON.stringify(constraints));
+      const s = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('[CAM] getUserMedia resolved, tracks:', s.getTracks().length);
       streamRef.current = s;
-      // DON'T set videoRef.current.srcObject here — the video element may not
-      // be in the DOM yet (stream state controls conditional rendering).
-      // A separate useEffect syncs it when both exist.
       setStream(s);
-      const track = s.getVideoTracks()[0];
-      const settings = track.getSettings();
-      setResolution(`${settings.width}x${settings.height}`);
     } catch (e: any) {
-      console.error('Camera access denied:', e);
-      setCameraError(e.message || 'Camera access denied');
+      console.error('[CAM] Camera error:', e.name, e.message);
+      setCameraError(`${e.name}: ${e.message}`);
     }
   }, []);
 
@@ -48,36 +46,45 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       s.getTracks().forEach(t => t.stop());
       streamRef.current = null;
       setStream(null);
-      // Also detach from video element to prevent "aborted" errors
+      startedRef.current = false;
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
     }
   }, [videoRef]);
 
-  // Sync stream to video element whenever stream state or video ref changes.
-  // This handles the critical case: startCamera() resolves before the video
-  // element exists (because stream is null on first render), so we defer the
-  // srcObject assignment until this effect runs after the DOM commit.
+  // Sync stream to video element AFTER DOM commit (when video element exists)
+  // Also start playback explicitly for browsers that need it.
   useEffect(() => {
     if (stream && videoRef.current && videoRef.current instanceof HTMLVideoElement) {
       if (videoRef.current.srcObject !== stream) {
+        console.log('[CAM] Attaching stream to video element');
         videoRef.current.srcObject = stream;
       }
+      // Explicit play() required on some mobile browsers even with autoPlay
+      if (videoRef.current.paused) {
+        console.log('[CAM] Starting video playback');
+        videoRef.current.play().catch((err: any) => {
+          console.warn('[CAM] play() failed:', err.name, err.message);
+        });
+      }
+      startedRef.current = true;
+      console.log('[CAM] Camera active — video element ready');
     }
   }, [stream, videoRef]);
 
   // Start/stop when paired status changes
   useEffect(() => {
+    console.log('[CAM] paired changed:', paired);
     if (paired) {
       startCamera();
     } else {
       stopCamera();
     }
-    // Cleanup: stop camera when this component unmounts
     return () => {
       const s = streamRef.current;
       if (s) {
+        console.log('[CAM] Cleanup — stopping camera');
         s.getTracks().forEach(t => t.stop());
         streamRef.current = null;
       }
@@ -85,20 +92,23 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paired]);
 
+  const showVideo = paired && stream;
+
   return (
     <div className="fixed inset-0 z-0 bg-black overflow-hidden flex items-center justify-center">
-      {/* Always-rendered video element — ensures videoRef always points to it.
-          Hidden via CSS when not active so ref stays valid from first mount. */}
+      {/* Video always rendered, always visible — never use visibility:hidden
+          because iOS Safari stops rendering frames to invisible elements.
+          When inactive, the placeholder overlay covers it via z-index. */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className={`w-full h-full object-cover ${!paired || !stream ? 'invisible' : ''}`}
+        className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Placeholder overlay (covers the invisible video element) */}
-      {(!paired || !stream) && (
+      {/* Placeholder overlay — z-10 covers video when not active */}
+      {!showVideo && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-text-muted bg-black">
           <Camera size={48} className="opacity-30" />
           <p className="text-sm">{cameraError || 'No camera connected'}</p>
