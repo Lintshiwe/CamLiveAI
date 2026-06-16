@@ -79,7 +79,11 @@ export function useRealtimeDetection(
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: base64, confidence: 0.65 }),
+        body: JSON.stringify({
+          image: base64,
+          confidence: 0.65,
+          ...(pairingConfig?.tenantType ? { domain: pairingConfig.tenantType } : {}),
+        }),
         signal: AbortSignal.timeout(30000), // 30s timeout
       });
 
