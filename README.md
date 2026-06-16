@@ -36,7 +36,8 @@ The QR code must contain a JSON object:
 }
 ```
 
-See **[QR_CODE_SPEC.md](./QR_CODE_SPEC.md)** for the complete specification, including how to generate QR codes from your own project.
+See **[CAMLIVEAI_SPEC.md](./CAMLIVEAI_SPEC.md)** for the complete integration spec — QR format, backend API contract, auth, QR generation examples, response format, CORS, and testing guide.
+**[QR_CODE_SPEC.md](./QR_CODE_SPEC.md)** is the quick-reference version.
 
 ## Quick Start
 
