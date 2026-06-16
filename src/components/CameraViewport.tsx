@@ -28,7 +28,7 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
     console.log('[CAM] Starting camera...');
     setCameraError(null);
     try {
-      const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
+      const constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } };
       console.log('[CAM] getUserMedia with:', JSON.stringify(constraints));
       const s = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('[CAM] getUserMedia resolved, tracks:', s.getTracks().length);
