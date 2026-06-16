@@ -127,7 +127,13 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
 
       {/* Bounding Boxes */}
       {showBboxes && paired && detections.map(d => d.bbox && (
-        <BoundingBox key={d.id} detection={d} showLabel={showLabels} />
+        <BoundingBox
+          key={d.id}
+          detection={d}
+          showLabel={showLabels}
+          videoWidth={videoRef.current?.videoWidth ?? 640}
+          videoHeight={videoRef.current?.videoHeight ?? 480}
+        />
       ))}
     </div>
   );
