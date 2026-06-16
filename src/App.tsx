@@ -19,7 +19,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userPanelOpen, setUserPanelOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<MockUser>(CURRENT_USER);
-  const [activeTab, setActiveTab] = useState<MobileTab>('camera');
+  const [activeTab, setActiveTab] = useState<MobileTab>('qr');
   const [settings, setSettings] = useState<AppSettings>({
     cameraSource: 'Default',
     resolution: '1920x1080',
@@ -46,6 +46,7 @@ export default function App() {
   const handlePair = useCallback((data: QRData) => {
     setPairingConfig(data);
     setPaired(true);
+    setActiveTab('camera');
   }, []);
 
   const handleSaveSettings = useCallback((s: AppSettings) => {
@@ -91,13 +92,10 @@ export default function App() {
       <CameraViewport
         detections={detections}
         paired={paired}
-        onPair={handlePair}
         showBboxes={settings.showBboxes}
         showLabels={settings.showLabels}
         showGrid={settings.showGrid}
         mode={mode}
-        onSwitch={handleSwitchCamera}
-        onSnapshot={handleSnapshot}
         videoRef={videoRef}
       />
 

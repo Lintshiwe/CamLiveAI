@@ -2,22 +2,18 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera } from 'lucide-react';
 import { Detection } from '../types';
 import { BoundingBox } from './BoundingBox';
-import { QRPairingOverlay } from './QRPairingOverlay';
 
 interface CameraViewportProps {
   detections: Detection[];
   paired: boolean;
-  onPair: (config: { token: string; tenantType: string; tenantSlug: string; cameraId: string; apiUrl: string }) => void;
   showBboxes: boolean;
   showLabels: boolean;
   showGrid: boolean;
   mode: string;
-  onSwitch: () => void;
-  onSnapshot: () => void;
   videoRef: React.MutableRefObject<HTMLVideoElement | null>;
 }
 
-export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, onPair, showBboxes, showLabels, showGrid, mode, videoRef }) => {
+export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, showBboxes, showLabels, showGrid, mode, videoRef }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [fps, setFps] = useState(30);
   const [resolution, setResolution] = useState('1920x1080');
@@ -111,8 +107,6 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
         <span className="text-xs text-text-muted">detections</span>
       </div>
 
-      {/* QR Pairing Overlay */}
-      {!paired && <QRPairingOverlay onScan={onPair} />}
     </div>
   );
 };
