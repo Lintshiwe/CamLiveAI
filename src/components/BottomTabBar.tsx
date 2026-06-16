@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, List, ScanLine, User } from 'lucide-react';
+import { Camera, List, User } from 'lucide-react';
 import { MobileTab } from '../types';
 
 interface BottomTabBarProps {
@@ -10,7 +10,6 @@ interface BottomTabBarProps {
 const TABS: { key: MobileTab; label: string; icon: typeof Camera }[] = [
   { key: 'camera', label: 'Camera', icon: Camera },
   { key: 'feed', label: 'Feed', icon: List },
-  { key: 'qr', label: 'QR', icon: ScanLine },
   { key: 'user', label: 'User', icon: User },
 ];
 

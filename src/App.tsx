@@ -8,9 +8,17 @@ import { UserPanel } from './components/UserPanel';
 import { StatusOverlay } from './components/StatusOverlay';
 import { ControlsOverlay } from './components/ControlsOverlay';
 import { useRealtimeDetection } from './hooks/useRealtimeDetection';
-import { DetectMode, MockUser, MobileTab, QRData, PairingConfig } from './types';
-import { CURRENT_USER } from './constants';
+import { DetectMode, MobileTab, QRData, PairingConfig } from './types';
 import './index.css';
+
+function getProjectName(tenantType: string): string {
+  switch (tenantType) {
+    case 'agriculture': return 'FruitSight AI';
+    case 'waste_management': return 'WasteSight AI';
+    case 'warehouse': return 'InventorySight AI';
+    default: return 'Custom Platform';
+  }
+}
 
 export default function App() {
   const [mode, setMode] = useState<DetectMode>('single');
@@ -18,8 +26,7 @@ export default function App() {
   const [pairingConfig, setPairingConfig] = useState<PairingConfig | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userPanelOpen, setUserPanelOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<MockUser>(CURRENT_USER);
-  const [activeTab, setActiveTab] = useState<MobileTab>('qr');
+  const [activeTab, setActiveTab] = useState<MobileTab>('camera');
   const [settings, setSettings] = useState<AppSettings>({
     cameraSource: 'Default',
     resolution: '1920x1080',
@@ -41,7 +48,6 @@ export default function App() {
     pairingConfig,
     mode
   );
-  const connectionTime = useRef(new Date());
 
   const handlePair = useCallback((data: QRData) => {
     setPairingConfig(data);
@@ -53,8 +59,9 @@ export default function App() {
     setSettings(s);
   }, []);
 
-  const handleSelectUser = useCallback((user: MockUser) => {
-    setCurrentUser(user);
+  const handleDisconnect = useCallback(() => {
+    setPaired(false);
+    setPairingConfig(null);
   }, []);
 
   const handleTabChange = useCallback((tab: MobileTab) => {
@@ -72,10 +79,6 @@ export default function App() {
     } else {
       setUserPanelOpen(false);
     }
-    if (tab === 'qr') {
-      setPaired(false);
-      setPairingConfig(null);
-    }
   }, [activeTab]);
 
   const handleSnapshot = useCallback(() => {
@@ -85,6 +88,18 @@ export default function App() {
   const handleSwitchCamera = useCallback(() => {
     console.log('Switch camera triggered');
   }, []);
+
+  // QR Gate: if not paired, render ONLY the QR pairing overlay
+  if (!paired) {
+    return (
+      <div className="fixed inset-0 bg-bg-primary text-text-primary overflow-hidden">
+        <QRPairingOverlay onScan={handlePair} />
+      </div>
+    );
+  }
+
+  const userName = pairingConfig?.tenantSlug ?? 'User';
+  const projectName = pairingConfig ? getProjectName(pairingConfig.tenantType) : '';
 
   return (
     <div className="fixed inset-0 bg-bg-primary text-text-primary overflow-hidden">
@@ -104,10 +119,12 @@ export default function App() {
         connected={paired}
         fps={fps}
         detectionCount={detections.length}
+        userName={userName}
+        projectName={projectName}
       />
 
       {/* Controls Overlay */}
-      {paired && activeTab === 'camera' && (
+      {activeTab === 'camera' && (
         <ControlsOverlay
           onSnapshot={handleSnapshot}
           onCapture={() => console.log('Capture')}
@@ -127,19 +144,11 @@ export default function App() {
         onClose={() => setActiveTab('camera')}
       />
 
-      {/* QR Pairing Overlay (QR tab) */}
-      {activeTab === 'qr' && (
-        <QRPairingOverlay
-          onScan={handlePair}
-          onClose={() => setActiveTab('camera')}
-        />
-      )}
-
       {/* User Panel */}
       <UserPanel
         isOpen={userPanelOpen}
-        currentUser={currentUser}
-        onSelectUser={handleSelectUser}
+        pairingConfig={pairingConfig}
+        onDisconnect={handleDisconnect}
         onClose={() => { setUserPanelOpen(false); setActiveTab('camera'); }}
       />
 

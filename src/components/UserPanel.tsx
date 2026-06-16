@@ -1,16 +1,15 @@
 import React from 'react';
-import { Users, Check, X } from 'lucide-react';
-import { MockUser } from '../types';
-import { MOCK_USERS } from '../constants';
+import { Link, X, Camera, Globe } from 'lucide-react';
+import { PairingConfig } from '../types';
 
 interface UserPanelProps {
   isOpen: boolean;
-  currentUser: MockUser;
-  onSelectUser: (user: MockUser) => void;
+  pairingConfig: PairingConfig | null;
+  onDisconnect: () => void;
   onClose: () => void;
 }
 
-export const UserPanel: React.FC<UserPanelProps> = ({ isOpen, currentUser, onSelectUser, onClose }) => {
+export const UserPanel: React.FC<UserPanelProps> = ({ isOpen, pairingConfig, onDisconnect, onClose }) => {
   if (!isOpen) return null;
 
   return (
@@ -26,63 +25,74 @@ export const UserPanel: React.FC<UserPanelProps> = ({ isOpen, currentUser, onSel
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2 text-text-muted">
-            <Users size={14} />
-            <span className="text-xs font-semibold uppercase tracking-wide">Users</span>
+            <Link size={14} />
+            <span className="text-xs font-semibold uppercase tracking-wide">Connection</span>
           </div>
           <button
             onClick={onClose}
             className="p-1 rounded-lg hover:bg-bg-hover text-text-muted hover:text-white transition-colors"
-            aria-label="Close user panel"
+            aria-label="Close connection panel"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Current User */}
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Current User</h3>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center text-sm font-bold">
-              {currentUser.name.charAt(0)}
+        {/* Connection Info */}
+        <div className="px-4 py-3">
+          <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Current Connection</h3>
+
+          {pairingConfig ? (
+            <div className="space-y-3">
+              {/* Tenant / Project */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-accent/15 text-accent flex items-center justify-center">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {pairingConfig.tenantSlug}
+                  </p>
+                  <p className="text-xs text-text-secondary capitalize">
+                    {pairingConfig.tenantType.replace('_', ' ')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Camera ID */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/10 text-white/70 flex items-center justify-center">
+                  <Camera size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{pairingConfig.cameraId}</p>
+                  <p className="text-xs text-text-secondary">Camera ID</p>
+                </div>
+              </div>
+
+              {/* API URL */}
+              <div className="px-4 py-2.5 rounded-lg bg-black/40 border border-border">
+                <p className="text-xs text-text-muted mb-1">API Endpoint</p>
+                <p className="text-xs font-mono text-text-secondary truncate">{pairingConfig.apiUrl}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-white">{currentUser.name}</p>
-              <p className="text-xs text-text-secondary">{currentUser.role} · {currentUser.tenant}</p>
+          ) : (
+            <div className="py-4 text-center">
+              <p className="text-sm text-text-muted">No active connection</p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* User List */}
-        <div className="flex-1 overflow-y-auto">
-          <h3 className="px-4 py-2 text-xs font-semibold text-text-muted uppercase tracking-wide">Switch User</h3>
-          {MOCK_USERS.map(user => (
+        {/* Disconnect Button */}
+        {pairingConfig && (
+          <div className="px-4 py-3 border-t border-border">
             <button
-              key={user.id}
-              onClick={() => { onSelectUser(user); onClose(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg-hover transition-colors text-left"
+              onClick={() => { onDisconnect(); onClose(); }}
+              className="w-full py-2.5 rounded-lg bg-accent-danger/15 text-accent-danger text-sm font-medium hover:bg-accent-danger/25 transition-colors"
             >
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                user.id === currentUser.id ? 'bg-accent/15 text-accent' : 'bg-white/10 text-white/70'
-              }`}>
-                {user.name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${user.id === currentUser.id ? 'text-accent' : 'text-white'}`}>{user.name}</span>
-                  {user.id === currentUser.id && <Check size={14} className="text-accent" />}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-text-muted">{user.role}</span>
-                  <span className="text-text-muted">·</span>
-                  <span className="text-xs text-text-muted truncate">{user.tenant}</span>
-                </div>
-              </div>
-              {user.active && (
-                <div className="w-2 h-2 rounded-full bg-accent-green shrink-0" />
-              )}
+              Disconnect
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
