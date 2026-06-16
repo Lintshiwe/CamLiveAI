@@ -24,5 +24,5 @@ export interface QRData {
   apiUrl: string;
 }
 
-export type DetectMode = 'single' | 'live' | 'batch';
+export type DetectMode = 'single' | 'live' | 'batch' | 'stream';
 export type MobileTab = 'camera' | 'feed' | 'user';

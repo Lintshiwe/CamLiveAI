@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Camera } from 'lucide-react';
 import { Detection } from '../types';
 import { BoundingBox } from './BoundingBox';
+import { MJPEGViewer } from './MJPEGViewer';
 import { getConfidenceColor } from '../utils/helpers';
 
 interface CameraViewportProps {
@@ -12,9 +13,11 @@ interface CameraViewportProps {
   showGrid: boolean;
   mode: string;
   videoRef: React.MutableRefObject<HTMLVideoElement | null>;
+  streamMode: boolean;
+  streamUrl: string;
 }
 
-export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, showBboxes, showLabels, showGrid, videoRef }) => {
+export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, paired, showBboxes, showLabels, showGrid, videoRef, streamMode, streamUrl }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -100,13 +103,17 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
       {/* Video always rendered, always visible — never use visibility:hidden
           because iOS Safari stops rendering frames to invisible elements.
           When inactive, the placeholder overlay covers it via z-index. */}
+      {/* Video always mounted — hidden visually when in stream mode so getUserMedia stays active */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="absolute inset-0 w-full h-full object-cover"
+        className={`absolute inset-0 w-full h-full object-cover ${streamMode ? 'opacity-0 pointer-events-none' : ''}`}
       />
+
+      {/* MJPEG Annotated Stream — replaces visual output in stream mode */}
+      {streamMode && <MJPEGViewer streamUrl={streamUrl} active={paired} />}
 
       {/* Placeholder overlay — z-10 covers video when not active */}
       {!showVideo && (
@@ -116,8 +123,8 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
         </div>
       )}
 
-      {/* Grid Overlay */}
-      {showGrid && paired && (
+      {/* Grid Overlay — hide in stream mode (annotations are server-side) */}
+      {showGrid && paired && !streamMode && (
         <div className="absolute inset-0 pointer-events-none opacity-30 z-10">
           <div className="w-full h-full" style={{
             backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
@@ -126,8 +133,8 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
         </div>
       )}
 
-      {/* Mask polygons (segmentation outlines) */}
-      {showBboxes && paired && detections.some(d => d.mask) && (() => {
+      {/* Mask polygons (segmentation outlines) — hide in stream mode */}
+      {showBboxes && paired && !streamMode && detections.some(d => d.mask) && (() => {
         const vw = videoRef.current?.videoWidth ?? 640;
         const vh = videoRef.current?.videoHeight ?? 480;
         return (
@@ -147,8 +154,8 @@ export const CameraViewport: React.FC<CameraViewportProps> = ({ detections, pair
         );
       })()}
 
-      {/* Bounding Boxes */}
-      {showBboxes && paired && detections.map(d => d.bbox && (
+      {/* Bounding Boxes — hide in stream mode */}
+      {showBboxes && paired && !streamMode && detections.map(d => d.bbox && (
         <BoundingBox
           key={d.id}
           detection={d}

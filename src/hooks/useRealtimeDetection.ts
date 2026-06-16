@@ -54,11 +54,12 @@ export function useRealtimeDetection(
 
   // Use the pairingConfig's apiUrl, falling back to the default
   const getApiUrl = useCallback(() => {
-    if (pairingConfig?.apiUrl) {
-      return `${pairingConfig.apiUrl.replace(/\/$/, '')}/detection/single`;
-    }
-    return 'https://fruitsight-ai.onrender.com/detection/single';
-  }, [pairingConfig]);
+    const base = pairingConfig?.apiUrl
+      ? `${pairingConfig.apiUrl.replace(/\/$/, '')}`
+      : 'https://fruitsight-ai.onrender.com';
+    const path = mode === 'stream' ? '/detection/ingest' : '/detection/single';
+    return `${base}${path}`;
+  }, [pairingConfig, mode]);
 
   const sendFrame = useCallback(async () => {
     const base64 = captureFrame();

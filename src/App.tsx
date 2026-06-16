@@ -11,6 +11,8 @@ import { useRealtimeDetection } from './hooks/useRealtimeDetection';
 import { DetectMode, MobileTab, QRData, PairingConfig } from './types';
 import './index.css';
 
+const STREAM_URL = 'https://lintshiwe-fruitsight-detector.hf.space/stream.mjpg';
+
 function getProjectName(tenantType: string): string {
   switch (tenantType) {
     case 'agriculture': return 'FruitSight AI';
@@ -22,6 +24,7 @@ function getProjectName(tenantType: string): string {
 
 export default function App() {
   const [mode, setMode] = useState<DetectMode>('single');
+  const [streamMode, setStreamMode] = useState(false);
   const [paired, setPaired] = useState(false);
   const [pairingConfig, setPairingConfig] = useState<PairingConfig | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -42,11 +45,12 @@ export default function App() {
   });
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const effectiveMode: DetectMode = streamMode ? 'stream' : mode;
   const { detections, isProcessing, fps, error: detectionError } = useRealtimeDetection(
     paired && activeTab === 'camera',
     videoRef,
     pairingConfig,
-    mode
+    effectiveMode
   );
 
   const handlePair = useCallback((data: QRData) => {
@@ -112,6 +116,8 @@ export default function App() {
         showGrid={settings.showGrid}
         mode={mode}
         videoRef={videoRef}
+        streamMode={streamMode}
+        streamUrl={STREAM_URL}
       />
 
       {/* Status Overlay */}
@@ -131,6 +137,8 @@ export default function App() {
           onCapture={() => console.log('Capture')}
           onSwitch={handleSwitchCamera}
           onSettings={() => setSettingsOpen(true)}
+          onToggleStream={() => setStreamMode(s => !s)}
+          isStreamMode={streamMode}
         />
       )}
 
